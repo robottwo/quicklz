@@ -1,0 +1,239 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Language" content="da">
+<meta name="GENERATOR" content="Microsoft FrontPage 5.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QuickLZ manual</title>
+</head>
+
+<body>
+
+<table border="0" cellpadding="0" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111" width="900">
+  <tr>
+    <td width="100%"><font face="Verdana" style="font-size: 16pt; font-weight: 700">
+    QuickLZ manual, version </font><span style="font-weight: 700">
+    <font face="Verdana" style="font-size: 16pt">1.0</font></span><p>
+    <font face="Verdana" size="2">If you don't want to read all this, go 
+    directly to &quot;Example of use&quot; at the end of this manual.<br>
+    <br>
+    </font>
+    <font face="Verdana" style="font-size: 14pt">Files</font><font face="Verdana" size="2"><b><br>
+    <br>
+    \Library Source<br>
+    </b>Contains the source code of QuickLZ which is fully contained in the 
+    quick.c file which is written in ANSI C with no inline assembler. It is only 
+    compatible with the x64 and x86 architectures, though, because it assumes 
+    little endian, sizeof(unsigned int) = 4 and uses unaligned memory access.</font></p>
+    <p><font face="Verdana" size="2">The directory also contains Visual Studo 
+    project files and directories because QuickLZ is being developed in Visual 
+    Studio but these files are not needed to compile quick.c with another 
+    compiler.</font></p>
+    <p><font face="Verdana" size="2"><b>\Visual C++ 2005 demo<br>
+    </b>Contains the source code and compiled binaries of the demo projects 
+    quick32.exe (for x86 Windows) and quick64.exe (for x64 Windows) that can be 
+    downloaded from the website and also contains the compiled libraries 
+    quick32.lib and quick64.lib.</font></p>
+    <p><b><font face="Verdana" size="2">\Simple ANSI C demo<br>
+    </font></b><font face="Verdana" size="2">Contains a very simple 
+    demonstration of compressing and decompressing a file. The source code of 
+    this demo is included at the end of this manual in the chapter &quot;Example of 
+    use&quot;.</font></p>
+    <p><font face="Verdana" size="2"><b>\Visual Basic 6.0 demo simple<br>
+    </b>Sample project for Visual Basic 6.0 using the string type as input and 
+    output. Some speed is lost because strings need to be converted to and from 
+    Unicode.</font></p>
+    <p><font face="Verdana" size="2"><b>\Visual Basic 6.0 demo fast<br>
+    </b>Sample project for Visual Basic 6.0 which is using byte arrays as input and 
+    output. Both demo projects are using the quick32.dll file which is compiled 
+    for x86 and using the __stdcall calling convention.</font></p>
+    <p><font face="Verdana" style="font-size: 14pt">Functions</font><font face="Verdana" style="font-size: 10pt"><br>
+    <br>
+    This part is not valid for the Visual Basic demo projects because they 
+    include wrapper functions for a very easy to use interface which hardly 
+    needs any documentation.<b><br>
+    <br>
+unsigned int qlz_compress(const char *source, char *destination, unsigned int 
+    size);<br>
+</b>This function will compress the source and store the result in the 
+destination. The size in bytes of the source must be </font>
+<font face="Verdana" size="2">given in the <i>size</i> parameter. If the 
+function fails, the return value is 0 else the size of the compressed data is 
+returned.</font></p>
+    <p><span style="background-color: #FFFF00"><font face="Verdana" size="2">
+    qlz_compress</font></span><font face="Verdana" size="2"><span style="background-color: #FFFF00"> 
+    expects that the </span></font>
+    <font face="Verdana" style="font-size: 10pt; background-color:#FFFF00">destination 
+buffer is exactly <i>size</i> + 36000 bytes or larger and will crash otherwise.</font></p>
+<p><font face="Verdana" style="font-size: 10pt"><b>unsigned int 
+qlz_decompress(const char *source, char *destination);<br>
+</b>This function will decompress the source and store the result in the 
+destination. </font>
+<font face="Verdana" size="2">If decompression fails the return value is 0 else 
+the return value tells the size of the decompressed data.</font></p>
+<p><font face="Verdana" style="font-size: 10pt; font-weight: 700">unsigned int 
+qlz_size_decompressed(char *source);<br>
+</font><font face="Verdana" size="2">This function takes data compressed with 
+QuickLZ </font><font face="Verdana" style="font-size: 10pt">as argument and 
+returns its uncompressed size. The function can be used for allocating the 
+correct amount of memory before decompression.</font></p>
+<p><font face="Verdana" style="font-size: 10pt; font-weight: 700">unsigned int 
+qlz_size_source(char *source);<br>
+</font><font face="Verdana" size="2">This function takes the first 32 bytes of data compressed with 
+QuickLZ </font><font face="Verdana" style="font-size: 10pt">as argument
+</font><font face="Verdana" size="2">(these 32 bytes contain a header) </font><font face="Verdana" style="font-size: 10pt">
+and returns the size of the entire compressed data.</font></p>
+<p><font face="Verdana" size="2">The function is usefull when handling files 
+that are too large to fit into memory and need to be compressed into several 
+smaller chunks that are stored concecutive in a single destination file. When 
+decompressing, the function tells how many bytes needs to be read from the file in 
+order to have read the compressed chunk entirely into memory before calling 
+qlz_decompress on it. The C++ demo project uses this method.</font></p>
+<p><font face="Verdana" style="font-size: 14pt">Notes</font></p>
+<ul>
+  <li><font face="Verdana" size="2">All functions are thread safe<br>
+&nbsp;</font></li>
+  <li><font face="Verdana" size="2">Upto 2000 bytes of the source is saved 
+  uncompressed so QuickLZ is not suited for very small data blocks.<br>
+&nbsp;</font></li>
+  <li><font face="Verdana" size="2">QuickLZ is memory safe such that no memory 
+  access is performed beyond the source or destination buffers.<br>
+&nbsp;</font></li>
+  <li><font face="Verdana" size="2">The compiled library is around 16 Kbyte in 
+  size and no calls to memory allocation 
+  or other system interaction is done.<br>
+&nbsp;</font></li>
+  <li><font face="Verdana" size="2">Due to performance QuickLZ performs very 
+  little error checking, so passing corrupted data to </font><font face="Verdana" style="font-size: 10pt">
+  qlz_decompress() can cause an exception. The only error checking done on the 
+  source is testing if the header is OK and if the last dword of the source is 
+  correct (which will detect many cases where the source is incomplete, for 
+  example due to incomplete file reads, etc.).<br>
+&nbsp;</font></li>
+  <li><font face="Verdana" size="2">The length of input data is limited only by 
+  the system or by 4 Gbyte, whichever is smallest.</font></li>
+</ul>
+
+    <p><font face="Verdana" style="font-size: 14pt">Example of use<br>
+    </font><b><font face="Verdana" size="2"><br>
+    compress.c<br>
+    </font></b><font SIZE="2">
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New; color: blue">
+    #include</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">
+    <span style="color:maroon">&lt;stdio.h&gt;<br>
+    </span></span>
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New; color: blue">
+    #include</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">
+    <span style="color:maroon">&lt;stdlib.h&gt;<br>
+    </span></span>
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New; color: blue">
+    #include</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">
+    <span style="color:maroon">&quot;quick.c&quot;<br>
+    </span></span>
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New; color: blue">
+    <br>
+    int</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New"> 
+    main(<span style="color:blue">int</span> argc, <span style="color:blue">char</span>* 
+    argv[])<br>
+    {<br>
+    &nbsp;</span><span style="font-size: 10.0pt; font-family: Courier New">&nbsp;
+    </span>
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp; 
+    FILE *ifile, *ofile;<br>
+    </span><span style="font-size: 10.0pt; font-family: Courier New">&nbsp;
+    </span>
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;
+    <span style="color:blue">char</span> *src, *dst;<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; <span style="color:blue">unsigned</span> <span style="color:blue">int</span> 
+    len;</span></p>
+    <p class="MsoNormal" style="text-autospace: none">
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    ifile = fopen(argv[1], <span style="color:maroon">&quot;rb&quot;</span>);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ofile = fopen(argv[2], <span style="color:maroon">&quot;wb&quot;</span>);</span></p>
+    <p class="MsoNormal" style="text-autospace: none">
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <span style="color:green">// allocate source buffer and read file<br>
+    </span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fseek(ifile, 0, SEEK_END);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; len = ftell(ifile);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fseek(ifile, 0, SEEK_SET);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; src = (<span style="color:blue">char</span>*) malloc(len);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fread(src, 1, len, ifile);</span></p>
+    <p class="MsoNormal" style="text-autospace: none">
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <span style="color:green">// Allocate destination buffer</span></span><span style="font-size: 10.0pt; font-family: Courier New; color:green">. 
+    It is very important that you<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // allocate exactly len + 36000 bytes or more!</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New"><br>
+    </span>
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    dst = (<span style="color:blue">char</span>*) malloc(len + 36000);</span></span></p>
+    <p class="MsoNormal" style="text-autospace: none">
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <span style="color:green">// compress and write result<br>
+    </span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; len = qlz_compress(src, dst, len);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span style="font-size: 10.0pt; font-family: Courier New">
+    fwrite(dst, len, 1, ofile);<br>
+    }</span></p>
+    <p class="MsoNormal" style="text-autospace: none"><b>
+    <font face="Verdana" size="2">decompress.c<br>
+    </font></b>
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New; color: blue">
+    #include</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">
+    <span style="color:maroon">&lt;stdio.h&gt;<br>
+    </span></span>
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New; color: blue">
+    #include</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">
+    <span style="color:maroon">&lt;stdlib.h&gt;<br>
+    </span></span>
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New; color: blue">
+    #include</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">
+    <span style="color:maroon">&quot;quick.c&quot;</span></span></p>
+    <p class="MsoNormal" style="text-autospace: none">
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New; color: blue">
+    int</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New"> 
+    main(<span style="color:blue">int</span> argc, <span style="color:blue">char</span>* 
+    argv[])<br>
+    {<br>
+    </span><span style="font-size: 10.0pt; font-family: Courier New">&nbsp;</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp; 
+    FILE *ifile, *ofile;<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; <span style="color:blue">char</span> *src, *dst;<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; <span style="color:blue">unsigned</span> <span style="color:blue">int</span> 
+    len;</span></p>
+    <p class="MsoNormal" style="text-autospace: none">
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp; 
+    ifile = fopen(argv[1], <span style="color:maroon">&quot;rb&quot;</span>);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; ofile = fopen(argv[2], <span style="color:maroon">&quot;wb&quot;</span>);</span></p>
+    <p class="MsoNormal" style="text-autospace: none">
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp;
+    <span style="color:green">// allocate source buffer<br>
+    </span>&nbsp;&nbsp;&nbsp;&nbsp; fseek(ifile, 0, SEEK_END);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; len = ftell(ifile);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; fseek(ifile, 0, SEEK_SET);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; src = (<span style="color:blue">char</span>*) malloc(len);</span></p>
+    <p class="MsoNormal" style="text-autospace: none">
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp;
+    <span style="color:green">// read file and allocate destination buffer<br>
+    </span>&nbsp;&nbsp;&nbsp;&nbsp; fread(src, 1, len, ifile);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; len = qlz_size_decompressed(src);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; dst = (<span style="color:blue">char</span>*) 
+    malloc(len);</span></p>
+    <p class="MsoNormal" style="text-autospace: none">
+    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp;
+    <span style="color:green">// decompress and write result<br>
+    </span>&nbsp;&nbsp;&nbsp;&nbsp; len = qlz_decompress(src, dst);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; </span><span style="font-size: 10.0pt; font-family: Courier New">
+    fwrite(dst, len, 1, ofile);<br>
+    }</span></font></td>
+  </tr>
+  <tr>
+    <td width="100%">&nbsp;</td>
+  </tr>
+</table>
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+</body>
+
+</html>

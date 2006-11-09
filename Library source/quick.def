@@ -1,0 +1,8 @@
+LIBRARY quicklz
+
+EXPORTS
+  qlz_compress
+  qlz_decompress
+  qlz_size_decompressed
+  qlz_size_source
+  
