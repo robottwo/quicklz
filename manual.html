@@ -1,239 +1,730 @@
 <html>
 
 <head>
+<BASE HREF="http://www.quicklz.com.way_back_stub/manual.html">
+
 <meta http-equiv="Content-Language" content="da">
 <meta name="GENERATOR" content="Microsoft FrontPage 5.0">
 <meta name="ProgId" content="FrontPage.Editor.Document">
 <meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
-<title>QuickLZ manual</title>
+<title>QuickLZ 1.20 manual</title>
 </head>
 
 <body>
 
-<table border="0" cellpadding="0" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111" width="900">
+<p align="center"><font face="Arial" style="font-size: 20pt; ">QuickLZ 1.20 manual</font></p>
+<p align="left"><font face="Verdana" style="font-size: 9pt">
+<a href="#block compression">Block compression</a><br>
+<a href="#streaming compression">Streaming compression</a><br>
+<a href="#tuning flags">Tuning flags</a><br>
+<a href="#compatibility">Compatibility</a><br>
+<a href="#upgrade">Upgrading from 1.00 or 1.10</a><br>
+<a href="#sample code">Sample code</a></font></p>
+<p align="left"><font face="Verdana" style="font-size: 9pt">Errata 
+(24-Mar-2007): In the sample code stream_decompress.c, the file_data buffer must 
+be 10000 + 400 bytes instead of 10000.<br>
+Errata (06-Apr-2007): 
+The #define speedup_incompressible flag only speeds up compression speed, not 
+decompression speed.</font></p>
+<p><font face="Arial" style="font-size: 16pt"><a name="block compression"></a>
+Block compression</font></p>
+<p><font face="Verdana" style="font-size: 9pt">Block compression consists of the 
+following functions:</font></p>
+<p><font face="Verdana" style="font-size: 9pt"><b>unsigned int 
+qlz_compress(const void *source, char *destination, unsigned int size)<br>
+</b>Compress the source data into the destination buffer and return the 
+compressed size.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">The destination buffer must be at 
+least <i>
+uncompressed size</i> + 36000 bytes large because the upper area is used as 
+internal scratch storage, but the compressed size is guaranteed to be at most <i>
+uncompressed size</i> + 400 bytes large.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">Valid input size is 1 byte to 4 
+GB or limited by system and must be passed in the <i>size</i> argument.</font></p>
+<p><font face="Verdana" style="font-size: 9pt"><b>unsigned int 
+qlz_decompress(const char *source, void *destination)<br>
+</b>Decompress the source into the destination buffer and return the 
+decompressed size. The source must be data compressed with qlz_compress().</font></p>
+<p><font face="Verdana" style="font-size: 9pt">The error checking 
+of qlz_decompress() 
+is very sparce. Only the first few header bytes are verified and if these are 
+invalid, the function returns 0. If errors occur 
+during decompression, it will either a) seg fault or b) return with arbitrary contents in 
+the destination buffer and with arbitrary return value. If the #define 
+memory_safe flag is set, only case b) can happen.</font></p>
+<p><font face="Verdana" style="font-size: 9pt"><b>unsigned int 
+qlz_size_decompressed(const char *source)<br>
+</b>Takes data compressed with qlz_compress() or qlz_compress_packet() as 
+argument and returns its uncompressed size. The return value can be used to 
+allocate the correct amount of memory for decompression.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">Only the first 9 bytes of the 
+source needs to be present which is where the header information in the QuickLZ 
+data format is located.</font></p>
+<p><font face="Verdana" style="font-size: 9pt"><b>unsigned int 
+qlz_size_compressed(const char *source)<br>
+</b>Takes the first 9 bytes of data compressed with qlz_compress() or 
+qlz_compress_packet() as argument (header information) and returns its entire 
+compressed size.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">The function is usefull when 
+handling files that are too large to fit into memory and need to be compressed 
+into several smaller chunks that are stored concecutive in a single destination 
+file. When decompressing, the function tells how many bytes needs to be read 
+from the file in order to have read the compressed chunk entirely into memory 
+before calling qlz_decompress() or qlz_decompress_packet() on it. The Visual C++ 
+2005 demo project uses this method.</font></p>
+<p><font face="Arial" style="font-size: 16pt"><a name="streaming compression">
+</a>Streaming compression</font></p>
+<p><font face="Verdana" style="font-size: 9pt">Because LZ compression is based 
+on finding repeated strings, compression ratio can degrade if a data entity is 
+being split into smaller packets that are compressed individually. Compression 
+ratio begins to decrease noticable at a packet size around 5 kbyte - 30 kbyte, 
+depending on the nature of the data, and is halved already around 500-2000 
+bytes. For that purpose, two new functions qlz_compress_packet() and 
+qlz_decompress_packet() are introduced which store a streaming history buffer of 
+the data. When using these functions there is a requirement that <i>packets must 
+be decompressed in the same order as they were compressed</i>.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">Packets below 100 bytes may not 
+compress well or may even increase slightly in size, even when using the 
+streaming compression of QuickLZ. This is a lower bound on packet size for which 
+QuickLZ is suitable due to other fundamental reasons. Packets around 400-500 
+bytes or larger will usually result in a compression ratio close to if the 
+entire data entity was compressed in one large piece.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">Note that the functions 
+qlz_size_compressed() and qlz_size_decompressed() also work for packets.</font></p>
+<p><font face="Verdana" style="font-size: 9pt"><b>unsigned int 
+qlz_compress_packet(const void *source, char *destination, unsigned int size, 
+char *buffer)</b><br>
+Compress the source data into the destination buffer and return the compressed 
+size. </font></p>
+<p><font face="Verdana" style="font-size: 9pt">The <i>buffer</i> argument must 
+point to a caller allocated buffer of size STREAM_BUFFER_SIZE which is defined 
+in the beginning of the quicklz.c file (standard value is 1000000 but can be 
+user defined - see the &quot;Tuning flags&quot; section of this manual). The buffer must 
+be zero'ed out prior to the first call to qlz_compress_packet(). The same buffer 
+must be passed at each successive call and its contents must be preserved and 
+never modified by the caller. Note that qlz_compress_packet() and 
+qlz_decompress_packet() use each their separate streaming buffer; they do not 
+share a single buffer.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">The <i>destination</i> buffer 
+must be at least
+<i>uncompressed size</i> + 400 bytes large and will be filled with a compressed 
+packet which can be passed to a decompressing site for decompression 
+immediately; there are no flush or fetch functions. The compressed packet is 
+guaranteed to be at most <i>
+uncompressed size</i> + 400 bytes large.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">Valid input size is 1 byte to 4 
+GB or limited by system and must be passed in the <i>size</i> argument.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">
+<b>unsigned int qlz_decompress_packet(const char *source, void *destination, 
+char *buffer)</b><br>
+Decompress the source into the destination buffer and return the compressed 
+size. The source must be data compressed with qlz_compress_packet().</font></p>
+<p><font face="Verdana" style="font-size: 9pt">The <i>buffer</i> argument must 
+point to a caller allocated buffer of size STREAM_BUFFER_SIZE which is defined 
+in the beginning of the quicklz.c file. The buffer must be zero'ed out prior to 
+the first call to qlz_decompress_packet(). The same buffer must be passed at 
+each successive call and its contents must be preserved and never modified by 
+the caller. Note that qlz_compress_packet() and qlz_decompress_packet() use each 
+their separate streaming buffer.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">The error checking 
+of qlz_decompress_packet() 
+is very sparce. Only the first few header bytes are verified and if these are 
+invalid, the function returns 0. If errors occur 
+during decompression, it will either a) seg fault or b) return with arbitrary contents in 
+the destination buffer and with arbitrary return value. If the #define 
+memory_safe flag is set, only case b) can happen.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">It is a requirement that <i>
+packets must be decompressed in the same order as they were compressed</i>.
+</font></p>
+<p><font face="Arial" style="font-size: 16pt"><a name="tuning flags"></a>Tuning 
+flags</font><font face="Verdana" size="2"><br>
+</font>
+<b><font face="Verdana" style="font-size: 8pt">
+<br>
+</font><font face="Verdana" style="font-size: 9pt">
+#define x86x64_only<br>
+</font>
+</b><font face="Verdana" style="font-size: 9pt">
+Two architecture classes are supported which can be specified with the 
+x86x64_only flag in the beginning of the quicklz.c file:</font></p>
+<p><font face="Verdana" style="font-size: 9pt">x86x64_only defined: Generates 
+code which is higly optimized for the x86 and x64 architectures but is not 
+compatible with other architectures. It assumes that the processor supports 
+unaligned memory access, is little endian and that sizeof(unsigned int) == 4. 
+Examples of supported processors are 80386, 80486, Xeon, Athlon64, Pentium 4, 
+Pentium 4 EMT64, Opteron, Sempron, Centrino, Celeron, Turion.<br>
+<br>
+x86x64_only commented out: Does not use unaligned memory access, is independant 
+of endianess and likewise assumes sizeof(unsigned int) == 4. Supported 
+architectures are Alpha, MIPS, IA64 (Itanium), SPARC, POWER, ARM and the like. 
+x86 and x64 are also supported in this mode but do not run at optimal speed.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">Data compressed on one 
+architecture with one setting of the x86x64_only flag can be decompressed on any 
+other architecture with any setting of the x86x64 flag - no problems can occur 
+exchanging compressed data across architectures.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">
+<b>#define no_time_overhead<br>
+</b>When set, an initial time overhead of that of initializing 4096 char 
+pointers (equal to performing memset on 16/32 kbyte data on 32/64 bit 
+architectures) is removed in qlz_compress() at the cost of around 2% slower 
+compression speed. The flag has no effect on qlz_compress_packet(). Set this 
+flag when compressing small data sources. The size threshold where setting the 
+flag pays off should be found experimentally but is typically less than 50 Kbyte.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">
+<b>#define test_rle<br>
+</b>Set this flag if you know beforehand that your data may contain long 
+sequences of the same byte like found in executable files and some raw images. 
+Do not set the flag when compressing only text, XML or HTML. Setting the flag 
+correctly can often gain 1-5% of speed for both compression and decompression 
+compared to when set incorrectly. </font></p>
+<p><font face="Verdana" style="font-size: 9pt">
+<b>#define speedup_incompressible<br>
+</b>Set this flag if you know beforehand that some of your data may be 
+incompressible like encoded sound, images and videos, PDF files or already 
+compressed data. Setting the flag in these cases speeds up  compression speed tremendously 
+(no effect on decompression speed). It works by testing if the source pointer is 
+currently inside an incompressible area and skipping the next 600 bytes, saving 
+them uncompressed using memcpy. However, setting the flag when not needed 
+decreases compression speed by 1-2%.</font></p>
+<p><b><font face="Verdana" style="font-size: 9pt">#define memory_safe (should 
+not yet be assumed exploit safe)</font></b><font face="Verdana" style="font-size: 9pt"><br>
+When set, decompression with qlz_decompress() or qlz_decompress_packet() cannot 
+crash if feeded with corrupted or invalid data. It ensures that no memory 
+access (read nor write) can happen outside the following byte intervals:</font></p>
+<p><font face="Verdana" style="font-size: 9pt">[source ; source + 
+qlz_size_compressed(source) - 1]<br>
+[destination ; destination + qlz_size_decompressed(source) - 1]</font></p>
+<p><font face="Verdana" style="font-size: 9pt">Before decompression the caller must 
+test if the return values of  qlz_size_compressed() and 
+qlz_size_decompressed() are within valid range.  This is because the compressed 
+and decompressed size is stored in a header in the first few bytes of the 
+compressed data and these could also have been corrupted or invalid.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">QuickLZ does not indicate if an 
+invalid memory access has been attempted; the functions qlz_decompress() and 
+qlz_decompress_packet() will return with arbitrary return value and arbitrary 
+contents in the destination buffer. It is therefore the responsibility of higher 
+level code to test if the decompressed data is valid and 'makes sense'.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">Setting the flag decreases 
+decompression speed in the order of 20-25%. The speed of compression is not 
+affected.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">Note that the memory_safe flag is 
+new in QuickLZ and should not be assumed exploit safe against maliciously manipulated data 
+yet.
+</font></p>
+<p><font face="Verdana" style="font-size: 9pt">
+<b>#define STREAM_BUFFER_SIZE 1000000</b><br>
+Defines the size in bytes of the streaming history buffer used by 
+qlz_compress_packet() and qlz_decompress_packet(). The setting has no effect on 
+the block compression functions qlz_compress() and qlz_decompress().</font></p>
+<p><font face="Verdana" style="font-size: 9pt">Its default value is 10000000 (~1 
+MB) but can be set as low as 120000 in environments with low memory at the cost 
+of around 1-5% decrease in compression ratio. Setting the buffer larger than 
+10000000 has only very insignificant effect.</font></p>
+<p><font face="Arial" style="font-size: 16pt"><a name="compatibility"></a>
+Compatibility</font></p>
+<p><font face="Verdana" style="font-size: 9pt">QuickLZ version 1.00 and 1.10 are 
+identical for both data format and programming API and thus fully mutually 
+compatible.</font></p>
+<p><font face="Verdana" style="font-size: 9pt">Contrary to announced during the 
+beta test phase of 1.20, it has been decided to remove all backwards 
+compatibility with version 1.00 and 1.10; data compressed with version 1.00 or 
+1.10 cannot be decompressed with version 1.20 or vice versa.</font></p>
+<p><font face="Arial" style="font-size: 16pt"><a name="upgrade"></a>Upgrading 
+from 1.00 or 1.10</font></p>
+<p><font face="Verdana" style="font-size: 9pt">If you are compressing data 
+blocks of 20 - 30 KB in size or smaller and it is possible to decompress the 
+blocks in the same order as you compress, consider upgrading to the new 
+streaming compression functions qlz_compress_packet() and 
+qlz_decompress_packet(). </font></p>
+<p><b><font face="Verdana" size="2">Upgrading to streaming compression</font></b></p>
+<p><font face="Verdana" style="font-size: 9pt">Upgrading to streaming 
+compression is easy. Simply allocate and initially zero out the streaming 
+buffers buf1 and buf2 and apply following modifictions to your source code:</font></p>
+<table border="1" cellpadding="4" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111" width="100%" id="AutoNumber5">
   <tr>
-    <td width="100%"><font face="Verdana" style="font-size: 16pt; font-weight: 700">
-    QuickLZ manual, version </font><span style="font-weight: 700">
-    <font face="Verdana" style="font-size: 16pt">1.0</font></span><p>
-    <font face="Verdana" size="2">If you don't want to read all this, go 
-    directly to &quot;Example of use&quot; at the end of this manual.<br>
-    <br>
-    </font>
-    <font face="Verdana" style="font-size: 14pt">Files</font><font face="Verdana" size="2"><b><br>
-    <br>
-    \Library Source<br>
-    </b>Contains the source code of QuickLZ which is fully contained in the 
-    quick.c file which is written in ANSI C with no inline assembler. It is only 
-    compatible with the x64 and x86 architectures, though, because it assumes 
-    little endian, sizeof(unsigned int) = 4 and uses unaligned memory access.</font></p>
-    <p><font face="Verdana" size="2">The directory also contains Visual Studo 
-    project files and directories because QuickLZ is being developed in Visual 
-    Studio but these files are not needed to compile quick.c with another 
-    compiler.</font></p>
-    <p><font face="Verdana" size="2"><b>\Visual C++ 2005 demo<br>
-    </b>Contains the source code and compiled binaries of the demo projects 
-    quick32.exe (for x86 Windows) and quick64.exe (for x64 Windows) that can be 
-    downloaded from the website and also contains the compiled libraries 
-    quick32.lib and quick64.lib.</font></p>
-    <p><b><font face="Verdana" size="2">\Simple ANSI C demo<br>
-    </font></b><font face="Verdana" size="2">Contains a very simple 
-    demonstration of compressing and decompressing a file. The source code of 
-    this demo is included at the end of this manual in the chapter &quot;Example of 
-    use&quot;.</font></p>
-    <p><font face="Verdana" size="2"><b>\Visual Basic 6.0 demo simple<br>
-    </b>Sample project for Visual Basic 6.0 using the string type as input and 
-    output. Some speed is lost because strings need to be converted to and from 
-    Unicode.</font></p>
-    <p><font face="Verdana" size="2"><b>\Visual Basic 6.0 demo fast<br>
-    </b>Sample project for Visual Basic 6.0 which is using byte arrays as input and 
-    output. Both demo projects are using the quick32.dll file which is compiled 
-    for x86 and using the __stdcall calling convention.</font></p>
-    <p><font face="Verdana" style="font-size: 14pt">Functions</font><font face="Verdana" style="font-size: 10pt"><br>
-    <br>
-    This part is not valid for the Visual Basic demo projects because they 
-    include wrapper functions for a very easy to use interface which hardly 
-    needs any documentation.<b><br>
-    <br>
-unsigned int qlz_compress(const char *source, char *destination, unsigned int 
-    size);<br>
-</b>This function will compress the source and store the result in the 
-destination. The size in bytes of the source must be </font>
-<font face="Verdana" size="2">given in the <i>size</i> parameter. If the 
-function fails, the return value is 0 else the size of the compressed data is 
-returned.</font></p>
-    <p><span style="background-color: #FFFF00"><font face="Verdana" size="2">
-    qlz_compress</font></span><font face="Verdana" size="2"><span style="background-color: #FFFF00"> 
-    expects that the </span></font>
-    <font face="Verdana" style="font-size: 10pt; background-color:#FFFF00">destination 
-buffer is exactly <i>size</i> + 36000 bytes or larger and will crash otherwise.</font></p>
-<p><font face="Verdana" style="font-size: 10pt"><b>unsigned int 
-qlz_decompress(const char *source, char *destination);<br>
-</b>This function will decompress the source and store the result in the 
-destination. </font>
-<font face="Verdana" size="2">If decompression fails the return value is 0 else 
-the return value tells the size of the decompressed data.</font></p>
-<p><font face="Verdana" style="font-size: 10pt; font-weight: 700">unsigned int 
-qlz_size_decompressed(char *source);<br>
-</font><font face="Verdana" size="2">This function takes data compressed with 
-QuickLZ </font><font face="Verdana" style="font-size: 10pt">as argument and 
-returns its uncompressed size. The function can be used for allocating the 
-correct amount of memory before decompression.</font></p>
-<p><font face="Verdana" style="font-size: 10pt; font-weight: 700">unsigned int 
-qlz_size_source(char *source);<br>
-</font><font face="Verdana" size="2">This function takes the first 32 bytes of data compressed with 
-QuickLZ </font><font face="Verdana" style="font-size: 10pt">as argument
-</font><font face="Verdana" size="2">(these 32 bytes contain a header) </font><font face="Verdana" style="font-size: 10pt">
-and returns the size of the entire compressed data.</font></p>
-<p><font face="Verdana" size="2">The function is usefull when handling files 
-that are too large to fit into memory and need to be compressed into several 
-smaller chunks that are stored concecutive in a single destination file. When 
-decompressing, the function tells how many bytes needs to be read from the file in 
-order to have read the compressed chunk entirely into memory before calling 
-qlz_decompress on it. The C++ demo project uses this method.</font></p>
-<p><font face="Verdana" style="font-size: 14pt">Notes</font></p>
-<ul>
-  <li><font face="Verdana" size="2">All functions are thread safe<br>
-&nbsp;</font></li>
-  <li><font face="Verdana" size="2">Upto 2000 bytes of the source is saved 
-  uncompressed so QuickLZ is not suited for very small data blocks.<br>
-&nbsp;</font></li>
-  <li><font face="Verdana" size="2">QuickLZ is memory safe such that no memory 
-  access is performed beyond the source or destination buffers.<br>
-&nbsp;</font></li>
-  <li><font face="Verdana" size="2">The compiled library is around 16 Kbyte in 
-  size and no calls to memory allocation 
-  or other system interaction is done.<br>
-&nbsp;</font></li>
-  <li><font face="Verdana" size="2">Due to performance QuickLZ performs very 
-  little error checking, so passing corrupted data to </font><font face="Verdana" style="font-size: 10pt">
-  qlz_decompress() can cause an exception. The only error checking done on the 
-  source is testing if the header is OK and if the last dword of the source is 
-  correct (which will detect many cases where the source is incomplete, for 
-  example due to incomplete file reads, etc.).<br>
-&nbsp;</font></li>
-  <li><font face="Verdana" size="2">The length of input data is limited only by 
-  the system or by 4 Gbyte, whichever is smallest.</font></li>
-</ul>
-
-    <p><font face="Verdana" style="font-size: 14pt">Example of use<br>
-    </font><b><font face="Verdana" size="2"><br>
-    compress.c<br>
-    </font></b><font SIZE="2">
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New; color: blue">
-    #include</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">
-    <span style="color:maroon">&lt;stdio.h&gt;<br>
+    <td width="36%">
+    <font face="Verdana" style="font-size: 9pt; font-weight: 700">1.00 or 1.10 
+    block compression</font></td>
+    <td width="64%">
+    <font face="Verdana" style="font-size: 9pt; font-weight: 700">1.20 streaming 
+    compression</font></td>
+  </tr>
+  <tr>
+    <td width="36%"><font face="Verdana" style="font-size: 9pt">r = 
+    qlz_compress(dst, src, siz);</font><p>
+    <font face="Verdana" style="font-size: 9pt">Needs &quot;uncompressed size&quot; + 
+    36000 bytes large dst buffer.</font></td>
+    <td width="64%"><font face="Verdana" style="font-size: 9pt">r = 
+    qlz_compress_packet(dst, src, siz, buf1);</font><p>
+    <font face="Verdana" style="font-size: 9pt">Needs only &quot;uncompressed size&quot; + 
+    400 bytes large dst buffer. Optional modification.</font></td>
+  </tr>
+  <tr>
+    <td width="36%"><font face="Verdana" style="font-size: 9pt">r = 
+    qlz_decompress(dst, src);</font></td>
+    <td width="64%"><font face="Verdana" style="font-size: 9pt">r = 
+    qlz_decompress_packet(dst, src, buf2);</font></td>
+  </tr>
+  <tr>
+    <td width="36%"><font face="Verdana" style="font-size: 9pt">r = 
+    qlz_size_source(src);</font><p><font face="Verdana" style="font-size: 9pt">
+    Needs the first 32 bytes of the entire source</font></td>
+    <td width="64%"><font face="Verdana" style="font-size: 9pt">r = 
+    qlz_size_compressed(src);</font><p>
+    <font face="Verdana" style="font-size: 9pt">Needs the first 9 bytes of the 
+    entire source (header information). <span style="background-color: #FFFF00">
+    Warning</span>: Packets can compress into less than 32 bytes in 1.20, 
+    causing occasional errors if code that tries to fetch 32 bytes from a file 
+    or other storage is not 
+    modified accordingly.</font></td>
+  </tr>
+  <tr>
+    <td width="36%"><font face="Verdana" style="font-size: 9pt">r = 
+    qlz_size_decompressed(src); </font>
+    <p><font face="Verdana" style="font-size: 9pt">Needs the first 32 bytes of 
+    the entire source</font></td>
+    <td width="64%"><font face="Verdana" style="font-size: 9pt">r = 
+    qlz_size_decompressed(src);</font><p>
+    <font face="Verdana" style="font-size: 9pt">Needs the first 9 bytes of the 
+    entire source (header information). <span style="background-color: #FFFF00">
+    Warning</span>: Packets can compress into less than 32 bytes in 1.20, 
+    causing occasional errors if code that tries to fetch 32 bytes from a file 
+    or other storage is not modified accordingly.</font></td>
+  </tr>
+</table>
+<p><b><font face="Verdana" size="2">Upgrading block compression</font></b></p>
+<p><font face="Verdana" style="font-size: 9pt">To upgrade to 1.20 block 
+compression, apply following modifications to your source code:</font></p>
+<table border="1" cellpadding="4" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111" width="100%" id="AutoNumber5">
+  <tr>
+    <td width="36%">
+    <font face="Verdana" style="font-size: 9pt; font-weight: 700">1.00 or 1.10 
+    block compression</font></td>
+    <td width="64%">
+    <font face="Verdana" style="font-size: 9pt; font-weight: 700">1.20 block 
+    compression</font></td>
+  </tr>
+  <tr>
+    <td width="36%"><font face="Verdana" style="font-size: 9pt">r = 
+    qlz_size_source(src);</font><p><font face="Verdana" style="font-size: 9pt">
+    Needs the first 32 bytes of the entire source</font></td>
+    <td width="64%"><font face="Verdana" style="font-size: 9pt">r = 
+    qlz_size_compressed(src);</font><p>
+    <font face="Verdana" style="font-size: 9pt">Needs the first 9 bytes of the 
+    entire source (header information). <span style="background-color: #FFFF00">
+    Warning</span>: Packets can compress into less than 32 bytes in 1.20, 
+    causing occasional errors if code that tries to fetch 32 bytes from a file 
+    or other storage is not modified accordingly.</font></td>
+  </tr>
+  <tr>
+    <td width="36%"><font face="Verdana" style="font-size: 9pt">r = 
+    qlz_size_decompressed(src); </font>
+    <p><font face="Verdana" style="font-size: 9pt">Needs the first 32 bytes of 
+    the entire source</font></td>
+    <td width="64%"><font face="Verdana" style="font-size: 9pt">r = 
+    qlz_size_decompressed(src);</font><p>
+    <font face="Verdana" style="font-size: 9pt">Needs the first 9 bytes of the 
+    entire source (header information). <span style="background-color: #FFFF00">
+    Warning</span>: Packets can compress into less than 32 bytes in 1.20, 
+    causing occasional errors if code that tries to fetch 32 bytes from a file 
+    or other storage is not modified accordingly.</font></td>
+  </tr>
+  </table>
+<p><font face="Arial" style="font-size: 16pt"><a name="sample code"></a>Sample 
+code</font></p>
+<table border="1" cellpadding="0" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111" width="100%" id="AutoNumber1" bgcolor="#F2F2F2">
+  <tr>
+    <td width="100%" bgcolor="#F2F2F2"><b><font face="Verdana" size="2">
+    block_compress.c<br>
+    </font></b><font size="2">
+    <span lang="EN-GB" style="font-size: 9pt; color: blue; font-family: Lucida Console">
+    #include</span><span lang="EN-GB" style="font-size: 9pt; font-family: Lucida Console">
+    <span style="COLOR: maroon">&lt;stdio.h&gt;<br>
     </span></span>
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New; color: blue">
-    #include</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">
-    <span style="color:maroon">&lt;stdlib.h&gt;<br>
+    <span lang="EN-GB" style="font-size: 9pt; color: blue; font-family: Lucida Console">
+    #include</span><span lang="EN-GB" style="font-size: 9pt; font-family: Lucida Console">
+    <span style="COLOR: maroon">&lt;stdlib.h&gt;<br>
     </span></span>
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New; color: blue">
-    #include</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">
-    <span style="color:maroon">&quot;quick.c&quot;<br>
-    </span></span>
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New; color: blue">
+    <span lang="EN-GB" style="font-size: 9pt; color: blue; font-family: Lucida Console">
+    #include</span><span lang="EN-GB" style="font-size: 9pt; font-family: Lucida Console">
+    <span style="COLOR: maroon">&quot;quick</span><font color="#800000"><span style="font-size: 9pt; font-family: Lucida Console">lz</span>.c&quot;</font><br>
+    </span>
+    <span lang="EN-GB" style="font-size: 9pt; color: blue; font-family: Lucida Console">
     <br>
-    int</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New"> 
-    main(<span style="color:blue">int</span> argc, <span style="color:blue">char</span>* 
-    argv[])<br>
+    int</span><span lang="EN-GB" style="font-size: 9pt; font-family: Lucida Console"> 
+    main(<span style="COLOR: blue">int</span> argc, <span style="COLOR: blue">
+    char</span>* argv[])<br>
     {<br>
-    &nbsp;</span><span style="font-size: 10.0pt; font-family: Courier New">&nbsp;
-    </span>
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp; 
+    &nbsp;</span><span style="font-size: 9pt; font-family: Lucida Console">&nbsp; </span>
+    <span lang="EN-GB" style="font-size: 9pt; font-family: Lucida Console">&nbsp; 
     FILE *ifile, *ofile;<br>
-    </span><span style="font-size: 10.0pt; font-family: Courier New">&nbsp;
-    </span>
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;
-    <span style="color:blue">char</span> *src, *dst;<br>
-    &nbsp;&nbsp;&nbsp;&nbsp; <span style="color:blue">unsigned</span> <span style="color:blue">int</span> 
-    len;</span></p>
-    <p class="MsoNormal" style="text-autospace: none">
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
-    ifile = fopen(argv[1], <span style="color:maroon">&quot;rb&quot;</span>);<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ofile = fopen(argv[2], <span style="color:maroon">&quot;wb&quot;</span>);</span></p>
-    <p class="MsoNormal" style="text-autospace: none">
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-    <span style="color:green">// allocate source buffer and read file<br>
+    </span><span style="font-size: 9pt; font-family: Lucida Console">&nbsp; </span>
+    <span lang="EN-GB" style="font-size: 9pt; font-family: Lucida Console">&nbsp;&nbsp;
+    <span style="COLOR: blue">char</span> *src, *dst;<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; <span style="COLOR: blue">unsigned</span> <span style="COLOR: blue">
+    int</span> len;</span><p class="MsoNormal">
+    <span lang="EN-GB" style="font-size: 9pt; font-family: Lucida Console">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    ifile = fopen(argv[1], <span style="COLOR: maroon">&quot;rb&quot;</span>);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ofile = fopen(argv[2], <span style="COLOR: maroon">
+    &quot;wb&quot;</span>);</span></p>
+    <p class="MsoNormal">
+    <span lang="EN-GB" style="font-size: 9pt; font-family: Lucida Console">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <span style="COLOR: green">// allocate source buffer and read file<br>
     </span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fseek(ifile, 0, SEEK_END);<br>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; len = ftell(ifile);<br>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fseek(ifile, 0, SEEK_SET);<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; src = (<span style="color:blue">char</span>*) malloc(len);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; src = (<span style="COLOR: blue">char</span>*) 
+    malloc(len);<br>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fread(src, 1, len, ifile);</span></p>
-    <p class="MsoNormal" style="text-autospace: none">
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-    <span style="color:green">// Allocate destination buffer</span></span><span style="font-size: 10.0pt; font-family: Courier New; color:green">. 
-    It is very important that you<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // allocate exactly len + 36000 bytes or more!</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New"><br>
-    </span>
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
-    dst = (<span style="color:blue">char</span>*) malloc(len + 36000);</span></span></p>
-    <p class="MsoNormal" style="text-autospace: none">
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-    <span style="color:green">// compress and write result<br>
+    <p class="MsoNormal">
+    <span lang="EN-GB" style="font-size: 9pt; font-family: Lucida Console">
+    <font color="#008000">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </font>
+    <span style="COLOR: green">// </span>
+    <font color="#008000">
+    <span style="font-size: 9pt; font-family: Lucida Console">a</span>llocate
+    <span style="font-size: 9pt; font-family: Lucida Console">&quot;uncompressed 
+    size&quot; + 36000 for the </span>
+    destination buffer</font><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; dst = (<span style="COLOR: blue">char</span>*) 
+    malloc(len + 36000);</span></p>
+    <p class="MsoNormal">
+    <span lang="EN-GB" style="font-size: 9pt; font-family: Lucida Console">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <span style="COLOR: green">// compress and write result<br>
     </span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; len = qlz_compress(src, dst, len);<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span style="font-size: 10.0pt; font-family: Courier New">
-    fwrite(dst, len, 1, ofile);<br>
-    }</span></p>
-    <p class="MsoNormal" style="text-autospace: none"><b>
-    <font face="Verdana" size="2">decompress.c<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span style="font-size: 9pt; font-family: Lucida Console">
+    fwrite(dst, len, 1, ofile);</span><span lang="EN-GB" style="font-size: 9pt; font-family: Lucida Console"><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span style="font-size: 9pt; font-family: Lucida Console">
+    fclose(ifile);<br>
+    </span><font size="2" style="font-size: 9pt"><span lang="EN-GB" style="font-family: Lucida Console">&nbsp;&nbsp;&nbsp;&nbsp; </span>
+    <span style="font-family: Lucida Console">&nbsp;fclose(ofile);</span></font><span style="font-size: 9pt; font-family: Lucida Console"><br>
+    }</span></font></td>
+  </tr>
+</table>
+<p>&nbsp;</p>
+<table border="1" cellpadding="0" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111" width="100%" id="AutoNumber2">
+  <tr>
+    <td width="100%" bgcolor="#F2F2F2"><font size="2">
+    <p class="MsoNormal"><b><font face="Verdana" size="2">block_decompress.c<br>
     </font></b>
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New; color: blue">
-    #include</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">
-    <span style="color:maroon">&lt;stdio.h&gt;<br>
+    </font><font style="font-size: 9pt">
+    <span lang="EN-GB" style="color: blue; font-family: Lucida Console">#include</span><span lang="EN-GB" style="font-family: Lucida Console">
+    <span style="COLOR: maroon">&lt;stdio.h&gt;<br>
     </span></span>
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New; color: blue">
-    #include</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">
-    <span style="color:maroon">&lt;stdlib.h&gt;<br>
+    <span lang="EN-GB" style="color: blue; font-family: Lucida Console">#include</span><span lang="EN-GB" style="font-family: Lucida Console">
+    <span style="COLOR: maroon">&lt;stdlib.h&gt;<br>
     </span></span>
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New; color: blue">
-    #include</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">
-    <span style="color:maroon">&quot;quick.c&quot;</span></span></p>
-    <p class="MsoNormal" style="text-autospace: none">
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New; color: blue">
-    int</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New"> 
-    main(<span style="color:blue">int</span> argc, <span style="color:blue">char</span>* 
-    argv[])<br>
+    <span lang="EN-GB" style="color: blue; font-family: Lucida Console">#include</span><span lang="EN-GB" style="font-family: Lucida Console">
+    <span style="COLOR: maroon">&quot;quick</span><font color="#800000"><span style="font-family: Lucida Console">lz</span>.c&quot;</font></span></p>
+    <p class="MsoNormal">
+    <span lang="EN-GB" style="color: blue; font-family: Lucida Console">int</span></font><font size="2" style="font-size: 9pt"><span lang="EN-GB" style="font-family: Lucida Console"> 
+    main(<span style="COLOR: blue">int</span> argc, <span style="COLOR: blue">
+    char</span>* argv[])<br>
     {<br>
-    </span><span style="font-size: 10.0pt; font-family: Courier New">&nbsp;</span><span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp; 
+    </span><span style="font-family: Lucida Console">&nbsp;</span><span lang="EN-GB" style="font-family: Lucida Console">&nbsp;&nbsp;&nbsp; 
     FILE *ifile, *ofile;<br>
-    &nbsp;&nbsp;&nbsp;&nbsp; <span style="color:blue">char</span> *src, *dst;<br>
-    &nbsp;&nbsp;&nbsp;&nbsp; <span style="color:blue">unsigned</span> <span style="color:blue">int</span> 
-    len;</span></p>
-    <p class="MsoNormal" style="text-autospace: none">
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp; 
-    ifile = fopen(argv[1], <span style="color:maroon">&quot;rb&quot;</span>);<br>
-    &nbsp;&nbsp;&nbsp;&nbsp; ofile = fopen(argv[2], <span style="color:maroon">&quot;wb&quot;</span>);</span></p>
-    <p class="MsoNormal" style="text-autospace: none">
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp;
-    <span style="color:green">// allocate source buffer<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; <span style="COLOR: blue">char</span> *src, *dst;<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; <span style="COLOR: blue">unsigned</span> <span style="COLOR: blue">
+    int</span> len;</span></p>
+    <p class="MsoNormal"><span lang="EN-GB" style="font-family: Lucida Console">
+    &nbsp;&nbsp;&nbsp;&nbsp; ifile = fopen(argv[1], <span style="COLOR: maroon">
+    &quot;rb&quot;</span>);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; ofile = fopen(argv[2], <span style="COLOR: maroon">
+    &quot;wb&quot;</span>);</span></p>
+    <p class="MsoNormal"><span lang="EN-GB" style="font-family: Lucida Console">
+    &nbsp;&nbsp;&nbsp;&nbsp; <span style="COLOR: green">// allocate source 
+    buffer<br>
     </span>&nbsp;&nbsp;&nbsp;&nbsp; fseek(ifile, 0, SEEK_END);<br>
     &nbsp;&nbsp;&nbsp;&nbsp; len = ftell(ifile);<br>
     &nbsp;&nbsp;&nbsp;&nbsp; fseek(ifile, 0, SEEK_SET);<br>
-    &nbsp;&nbsp;&nbsp;&nbsp; src = (<span style="color:blue">char</span>*) malloc(len);</span></p>
-    <p class="MsoNormal" style="text-autospace: none">
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp;
-    <span style="color:green">// read file and allocate destination buffer<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; src = (<span style="COLOR: blue">char</span>*) 
+    malloc(len);</span></p>
+    <p class="MsoNormal"><span lang="EN-GB" style="font-family: Lucida Console">
+    &nbsp;&nbsp;&nbsp;&nbsp; <span style="COLOR: green">// read file and 
+    allocate destination buffer<br>
     </span>&nbsp;&nbsp;&nbsp;&nbsp; fread(src, 1, len, ifile);<br>
     &nbsp;&nbsp;&nbsp;&nbsp; len = qlz_size_decompressed(src);<br>
-    &nbsp;&nbsp;&nbsp;&nbsp; dst = (<span style="color:blue">char</span>*) 
+    &nbsp;&nbsp;&nbsp;&nbsp; dst = (<span style="COLOR: blue">char</span>*) 
     malloc(len);</span></p>
-    <p class="MsoNormal" style="text-autospace: none">
-    <span lang="EN-GB" style="font-size: 10.0pt; font-family: Courier New">&nbsp;&nbsp;&nbsp;&nbsp;
-    <span style="color:green">// decompress and write result<br>
+    <p class="MsoNormal"><span lang="EN-GB" style="font-family: Lucida Console">
+    &nbsp;&nbsp;&nbsp;&nbsp; <span style="COLOR: green">// decompress and write 
+    result<br>
     </span>&nbsp;&nbsp;&nbsp;&nbsp; len = qlz_decompress(src, dst);<br>
-    &nbsp;&nbsp;&nbsp;&nbsp; </span><span style="font-size: 10.0pt; font-family: Courier New">
+    &nbsp;&nbsp;&nbsp;&nbsp; </span><span style="font-family: Lucida Console">
     fwrite(dst, len, 1, ofile);<br>
+    </span><span lang="EN-GB" style="font-family: Lucida Console">&nbsp;&nbsp;&nbsp;&nbsp; </span>
+    <span style="font-family: Lucida Console">fclose(ifile);</span><span lang="EN-GB" style="font-family: Lucida Console"><br>
+    &nbsp;&nbsp;&nbsp;&nbsp; </span>
+    <span style="font-family: Lucida Console">fclose(ofile);<br>
     }</span></font></td>
   </tr>
+</table>
+<p>&nbsp;</p>
+<table border="1" cellpadding="0" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111" width="100%" id="AutoNumber3">
   <tr>
-    <td width="100%">&nbsp;</td>
+    <td width="100%" bgcolor="#F2F2F2"><font size="2">
+    <p class="MsoNormal"><b><font face="Verdana" size="2">stream_compress.c<br>
+    </font></b>
+    </font><font face="Lucida Console" style="font-size: 9pt" COLOR="#0000ff">
+    #include</font><font face="Lucida Console" style="font-size: 9pt">
+    <font color="#800000">&lt;stdio.h&gt;</font><br>
+    </font><font face="Lucida Console" style="font-size: 9pt" COLOR="#0000ff">
+    #include</font><font face="Lucida Console" style="font-size: 9pt">
+    <font color="#800000">&lt;stdlib.h&gt;</font><br>
+    </font><font face="Lucida Console" style="font-size: 9pt" COLOR="#0000ff">
+    #include</font><font face="Lucida Console" style="font-size: 9pt">
+    <font color="#800000">&quot;quicklz.c&quot;</font></font></p>
+    <font COLOR="#0000ff">
+    <p><font face="Lucida Console" style="font-size: 9pt">int</font></font><font face="Lucida Console"><font style="font-size: 9pt"> 
+    main(</font><font COLOR="#0000ff" style="font-size: 9pt">int</font><font style="font-size: 9pt"> 
+    argc, </font><font COLOR="#0000ff" style="font-size: 9pt">char</font></font><font face="Lucida Console" style="font-size: 9pt">* 
+    argv[])<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">{<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    FILE *ifile, *ofile;<br>
+&nbsp;&nbsp;&nbsp; </font>
+    <font COLOR="#0000ff" face="Lucida Console" style="font-size: 9pt">char</font><font face="Lucida Console" style="font-size: 9pt"> 
+    *file_data, *compressed, *decompressed, *buf;<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font face="Lucida Console">
+    <font COLOR="#0000ff" style="font-size: 9pt">unsigned</font><font style="font-size: 9pt">
+    </font><font COLOR="#0000ff" style="font-size: 9pt">int</font></font><font face="Lucida Console" style="font-size: 9pt"> 
+    d, c, file_len;</font></p>
+    <p><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    ifile = fopen(argv[1], <font color="#800000">&quot;rb&quot;</font>);<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    ofile = fopen(argv[2], <font color="#800000">&quot;wb&quot;</font>);<br>
+    <br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    file_data = (</font><font COLOR="#0000ff" face="Lucida Console" style="font-size: 9pt">char</font><font face="Lucida Console" style="font-size: 9pt">*) 
+    malloc(10000);</font></p>
+    <p><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font COLOR="#008000" face="Lucida Console" style="font-size: 9pt">// 
+    allocate &quot;uncompressed size&quot; + 400 bytes for the destination buffer where
+    <br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font COLOR="#008000" face="Lucida Console" style="font-size: 9pt">// 
+    &quot;uncompressed size&quot; = 10000 in worst case in this sample demo<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    compressed = (</font><font COLOR="#0000ff" face="Lucida Console" style="font-size: 9pt">char</font><font face="Lucida Console" style="font-size: 9pt">*) 
+    malloc(10000 + 400); </font></p>
+    <p><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font COLOR="#008000" face="Lucida Console" style="font-size: 9pt">// 
+    allocate and initially zero out the history buffer. After this, make sure it 
+    is<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font COLOR="#008000" face="Lucida Console" style="font-size: 9pt">// 
+    preserved across calls and never modified manually<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    buf = (</font><font COLOR="#0000ff" face="Lucida Console" style="font-size: 9pt">char</font><font face="Lucida Console" style="font-size: 9pt">*) 
+    malloc(STREAM_BUFFER_SIZE);<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    memset(buf, 0, STREAM_BUFFER_SIZE); </font></p>
+    <p><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font COLOR="#008000" face="Lucida Console" style="font-size: 9pt">// 
+    compress the file in random sized packets<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font COLOR="#0000ff" face="Lucida Console" style="font-size: 9pt">
+    while</font><font face="Lucida Console" style="font-size: 9pt">((d = 
+    fread(file_data, 1, rand() % 10000 + 1, ifile)) != 0)<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    {<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    c = qlz_compress_packet(file_data, compressed, d, buf);<br>
+&nbsp;&nbsp;&nbsp; </font><font style="font-size: 9pt">
+    <font face="Lucida Console">&nbsp;&nbsp;&nbsp; printf(<font color="#800000">&quot;%d 
+    bytes compressed into %d\n&quot;</font>, d, c);</font></p>
+    </font>
+    <p><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    </font><font COLOR="#008000" face="Lucida Console" style="font-size: 9pt">// 
+    the buffer &quot;compressed&quot; now contains c bytes which we could have sent 
+    directly to a <br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    </font><font COLOR="#008000" face="Lucida Console" style="font-size: 9pt">// 
+    decompressing site for decompression<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    </font><font face="Lucida Console" style="font-size: 9pt">fwrite(compressed, 
+    c, 1, ofile);<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    }<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    fclose(ifile);<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    fclose(ofile);<br>
+&nbsp;&nbsp;&nbsp; </font>
+    <font COLOR="#0000ff" face="Lucida Console" style="font-size: 9pt">return</font><font face="Lucida Console" style="font-size: 9pt"> 
+    0;<br>
+    }</font></td>
   </tr>
 </table>
-
 <p>&nbsp;</p>
+<table border="1" cellpadding="0" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111" width="100%" id="AutoNumber4">
+  <tr>
+    <td width="100%" bgcolor="#F2F2F2"><font size="2">
+    <p class="MsoNormal"><b><font face="Verdana" size="2">stream_decompress.c<br>
+    </font></b>
+    </font><font face="Lucida Console" style="font-size: 9pt" COLOR="#0000ff">
+    #include</font><font face="Lucida Console" style="font-size: 9pt">
+    <font color="#800000">&lt;stdio.h&gt;</font></font><font face="Lucida Console" style="font-size: 9pt" COLOR="#0000ff"><br>
+    #include</font><font face="Lucida Console" style="font-size: 9pt">
+    <font color="#800000">&lt;stdlib.h&gt;</font><br>
+    </font><font face="Lucida Console" style="font-size: 9pt" COLOR="#0000ff">
+    #include</font><font face="Lucida Console" style="font-size: 9pt">
+    <font color="#800000">&quot;quicklz.c&quot;</font></font></p>
+    <font COLOR="#0000ff">
+    <p><font face="Lucida Console" style="font-size: 9pt">int</font></font><font face="Lucida Console"><font style="font-size: 9pt"> 
+    main(</font><font COLOR="#0000ff" style="font-size: 9pt">int</font><font style="font-size: 9pt"> 
+    argc, </font><font COLOR="#0000ff" style="font-size: 9pt">char</font></font><font face="Lucida Console" style="font-size: 9pt">* 
+    argv[])<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">{<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    FILE *ifile, *ofile;<br>
+&nbsp;&nbsp;&nbsp; </font>
+    <font COLOR="#0000ff" face="Lucida Console" style="font-size: 9pt">char</font><font face="Lucida Console" style="font-size: 9pt"> 
+    *file_data, *compressed, *decompressed, *buf;<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font face="Lucida Console">
+    <font COLOR="#0000ff" style="font-size: 9pt">unsigned</font><font style="font-size: 9pt">
+    </font><font COLOR="#0000ff" style="font-size: 9pt">int</font></font><font face="Lucida Console" style="font-size: 9pt"> 
+    d, c, file_len;</font></p>
+    <p><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font COLOR="#008000" face="Lucida Console" style="font-size: 9pt">// 
+    read source file<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    ifile = fopen(argv[1], <font color="#800000">&quot;rb&quot;</font>);<br>
+&nbsp;&nbsp;&nbsp; </font><font style="font-size: 9pt">
+    <font face="Lucida Console">ofile = fopen(argv[2], <font color="#800000">
+    &quot;wb&quot;</font>);</font></p>
+    <p><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font COLOR="#008000" face="Lucida Console" style="font-size: 9pt">// 
+    a compressed packet can be at most &quot;uncompressed size&quot; + 400 bytes large 
+    where<br>
+&nbsp;&nbsp;&nbsp; // &quot;uncompressed size&quot; = 10000 in worst case in this sample 
+    demo<br>
+    </font><font face="Lucida Console">&nbsp;&nbsp;&nbsp; file_data = (</font></font><font COLOR="#0000ff" face="Lucida Console" style="font-size: 9pt">char</font><font face="Lucida Console" style="font-size: 9pt">*) 
+    malloc(10000 + 400);<br>
+    </font><font COLOR="#008000" face="Lucida Console" style="font-size: 9pt">
+    <br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font COLOR="#008000" face="Lucida Console" style="font-size: 9pt">// 
+    allocate decompression buffer<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    decompressed = (</font><font COLOR="#0000ff" face="Lucida Console" style="font-size: 9pt">char</font><font face="Lucida Console" style="font-size: 9pt">*) 
+    malloc(10000);</font></p>
+    <p><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font COLOR="#008000" face="Lucida Console" style="font-size: 9pt">// 
+    allocate and initially zero out the history buffer. After this, make sure it 
+    is<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font COLOR="#008000" face="Lucida Console" style="font-size: 9pt">// 
+    preserved across calls and never modified manually<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    buf = (</font><font COLOR="#0000ff" face="Lucida Console" style="font-size: 9pt">char</font><font face="Lucida Console" style="font-size: 9pt">*) 
+    malloc(STREAM_BUFFER_SIZE);<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    memset(buf, 0, STREAM_BUFFER_SIZE); </font></p>
+    <p><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font COLOR="#008000" face="Lucida Console" style="font-size: 9pt">// 
+    read 9-byte header to find the size of the entire compressed packet, and <br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font COLOR="#008000" face="Lucida Console" style="font-size: 9pt">// 
+    then read remaining packet<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font COLOR="#0000ff" face="Lucida Console" style="font-size: 9pt">
+    while</font><font face="Lucida Console" style="font-size: 9pt">((c = 
+    fread(file_data, 1, 9, ifile)) != 0)<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    {<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    c = qlz_size_compressed(file_data);<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    fread(file_data + 9, 1, c - 9, ifile);<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    d = qlz_decompress_packet(file_data, decompressed, buf);<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    printf(<font color="#800000">&quot;%d bytes decompressed into %d.\n&quot;</font>, c, 
+    d);<br>
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp;
+    </font><font face="Lucida Console" style="font-size: 9pt">&nbsp;&nbsp;&nbsp; 
+    fwrite(decompressed, d, 1, ofile);<br>
+&nbsp;&nbsp;&nbsp; </font><font face="Lucida Console" style="font-size: 9pt">}<br>
+&nbsp;&nbsp;&nbsp; fclose(ifile);<br>
+&nbsp;&nbsp;&nbsp; fclose(ofile);<br>
+&nbsp;&nbsp;&nbsp; </font>
+    <font COLOR="#0000ff" face="Lucida Console" style="font-size: 9pt">return</font><font face="Lucida Console" style="font-size: 9pt"> 
+    0;<br>
+    }</font></td>
+  </tr>
+</table>
 <p>&nbsp;</p>
 
 </body>
+
+
+<SCRIPT language="Javascript">
+<!--
+
+// FILE ARCHIVED ON 20070528110618 AND RETRIEVED FROM THE
+// INTERNET ARCHIVE ON 20081006083342.
+// JAVASCRIPT APPENDED BY WAYBACK MACHINE, COPYRIGHT INTERNET ARCHIVE.
+// ALL OTHER CONTENT MAY ALSO BE PROTECTED BY COPYRIGHT (17 U.S.C.
+// SECTION 108(a)(3)).
+
+   var sWayBackCGI = "http://web.archive.org/web/20070528110618/";
+
+   function xResolveUrl(url) {
+      var image = new Image();
+      image.src = url;
+      return image.src;
+   }
+   function xLateUrl(aCollection, sProp) {
+      var i = 0;
+      for(i = 0; i < aCollection.length; i++) {
+         var url = aCollection[i][sProp];         if (typeof(url) == "string") { 
+          if (url.indexOf("mailto:") == -1 &&
+             url.indexOf("javascript:") == -1
+             && url.length > 0) {
+            if(url.indexOf("http") != 0) {
+                url = xResolveUrl(url);
+            }
+            url = url.replace('.way_back_stub','');
+            aCollection[i][sProp] = sWayBackCGI + url;
+         }
+         }
+      }
+   }
+
+   xLateUrl(document.getElementsByTagName("IMG"),"src");
+   xLateUrl(document.getElementsByTagName("A"),"href");
+   xLateUrl(document.getElementsByTagName("AREA"),"href");
+   xLateUrl(document.getElementsByTagName("OBJECT"),"codebase");
+   xLateUrl(document.getElementsByTagName("OBJECT"),"data");
+   xLateUrl(document.getElementsByTagName("APPLET"),"codebase");
+   xLateUrl(document.getElementsByTagName("APPLET"),"archive");
+   xLateUrl(document.getElementsByTagName("EMBED"),"src");
+   xLateUrl(document.getElementsByTagName("BODY"),"background");
+   xLateUrl(document.getElementsByTagName("TD"),"background");
+   xLateUrl(document.getElementsByTagName("INPUT"),"src");
+   var forms = document.getElementsByTagName("FORM");
+   if (forms) {
+       var j = 0;
+       for (j = 0; j < forms.length; j++) {
+              f = forms[j];
+              if (typeof(f.action)  == "string") {
+                 if(typeof(f.method)  == "string") {
+                     if(typeof(f.method) != "post") {
+                        f.action = sWayBackCGI + f.action;
+                     }
+                  }
+              }
+        }
+    }
+
+
+//-->
+</SCRIPT>
 
 </html>
