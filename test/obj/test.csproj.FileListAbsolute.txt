@@ -1,0 +1,7 @@
+D:\tune\c sharp dll\release\test.exe
+D:\tune\c sharp dll\release\test.pdb
+D:\tune\c sharp dll\test\obj\x86\Release\ResolveAssemblyReference.cache
+D:\tune\c sharp dll\test\obj\x86\Release\test.exe
+D:\tune\c sharp dll\test\obj\x86\Release\test.pdb
+D:\quicklz\c sharp dll\test\obj\x86\Release\test.exe
+D:\quicklz\c sharp dll\test\obj\x86\Release\test.pdb
