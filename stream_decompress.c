@@ -1,4 +1,4 @@
-// Sample demo for QuickLZ 1.4.0
+// Sample demo for QuickLZ 1.4.x
 
 // Remember to define QLZ_COMPRESSION_LEVEL to the same value for the compressor and decompressor
 

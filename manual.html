@@ -148,8 +148,8 @@
 
 <body>
 
-<p class="style6">QuickLZ C 1.4.0 manual</p>
-<p class="plain">Last edited: 30-Apr-2008.</p>
+<p class="style6">QuickLZ C 1.4.x manual</p>
+<p class="plain">Last edited: 22-Apr-2020.</p>
 <p class="plain"><a href="#functions">Functions</a><span class="style43"><br />
 </span>
 <a href="#flags">Flags</a><span class="style43"><br />
@@ -162,20 +162,20 @@
 <a href="#architecture">Architecture Compatibility</a><span class="style43"><br />
 </span>
 <a href="#backwards">Backwards Compatibility</a></p>
-<p class="plain">This manual covers the C version of the QuickLZ 1.4.0 library. 
+<p class="plain">This manual covers the C version of the QuickLZ 1.4.x library. 
 It consists of the two files quicklz.c and quicklz.h whose only dependency is 
 string.h.</p>
-<p class="plain">QuickLZ 1.4.0 supports three compression levels and optional streaming 
+<p class="plain">QuickLZ 1.4.x supports three compression levels and optional streaming 
 mode. Because of performance reasons, these settings cannot be given in 
 runtime but must instead be 
 defined through #define flags 
 whereafter the library must be compiled.</p>
-<p class="plain">The API of version 1.4.0 is the same as in version 1.31 except 
-that the 1.30 flags <span class="code">COMPRESSION_LEVEL</span><span class="style47">, </span>
+<p class="plain">The API of version 1.4.x is the same as in version 1.3.x except 
+that the 1.3.x flags <span class="code">COMPRESSION_LEVEL</span><span class="style47">, </span>
 <span class="style14">STREAMING_MODE</span><span class="style47">, memory_safe 
 and test_rle have been removed, renamed, or otherwise changed their meaning.</span></p>
-<p class="plain">Version 1.4.0 is not data compatible with version 1.31; data 
-compressed with 1.31 cannot be decompressed with 1.4.0 or vice versa.</p>
+<p class="plain">Version 1.4.x is not data compatible with version 1.3.x; data 
+compressed with 1.3.x cannot be decompressed with 1.4.x or vice versa.</p>
 <p class="style1"><strong>Functions<br />
 </strong><span class="style3">Following public functions exist</span><span class="plain">:</span></p>
 <table style="width: 100%" cellpadding="6" class="style17">
@@ -502,7 +502,7 @@ mode:</h2>
 <h2 class="style8"><strong><a name="overlap"></a>Overlappin<span class="style2">g 
 decompression</span></strong><br />
 </h2>
-<h2 class="style40">QuickLZ 1.4.0 supports overlapping decompression to save 
+<h2 class="style40">QuickLZ 1.4.x supports overlapping decompression to save 
 memory. Assume that d = (decompressed size) and c = (compressed size). Place compressed data at the 
 rightmost end of a destination buffer of total size 
 d + (d &gt;&gt; 3) + 400:</h2>
@@ -645,7 +645,7 @@ constants have the values given in the table below, plus the value of </span>
 qlz_get_setting()</span> to allocate the correct amount of memory instead of 
 hardcoding it.</p>
 <p><strong class="style1"><a name="architecture"></a>Architecture Compatibility<br />
-</strong><span class="plain">QuickLZ 1.4.0 has been extensively tested and bounds 
+</strong><span class="plain">QuickLZ 1.4.x has been extensively tested and bounds 
 checked on a variety of 32- and 64-bit architectures such as x86, x64, UltraSPARC, MIPS, 
 Itanium, POWER, ARM, PA-RISC, Alpha, Cell and 68k. Data compressed on one architecture can be 
 decompressed on any other architecture.</span></p>

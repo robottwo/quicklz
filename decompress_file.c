@@ -1,4 +1,4 @@
-// Sample demo for QuickLZ 1.4.0
+// Sample demo for QuickLZ 1.4.x
 
 // Remember to define QLZ_COMPRESSION_LEVEL and QLZ_STREAMING_MODE to the same values for the compressor and decompressor
 

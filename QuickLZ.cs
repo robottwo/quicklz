@@ -1,14 +1,16 @@
-// QuickLZ data compression library
-// Copyright (C) 2006-2009 Lasse Mikkel Reinhold
+// Fast data compression library
+// Copyright (C) 2006-2010 Lasse Mikkel Reinhold
 // lar@quicklz.com
 //
-// QuickLZ can be used for free under the GPL 1, 2 or 3 license (where anything 
+// Managed safe C# port of QuickLZ. Only a subset of the C library has been
+// ported, namely level 1 not in streaming mode. 
+//
+// QuickLZ can be used for free under the GPL-1, -2 or -3 license (where anything 
 // released into public must be open source) or under a commercial license if such 
 // has been acquired (see http://www.quicklz.com/order.html). The commercial license 
 // does not cover derived or ported versions created by third parties under GPL.
 //
-// Managed safe C# port of version 1.4.0. Only a subset of the C library has been
-// ported, namely level 1 not in streaming mode. 
+// Version 1.4.1 final - april 2010
 
 using System;
 using System.Collections.Generic;
@@ -18,17 +20,14 @@ namespace QuickLZSharp
 {
     static class QuickLZ
     {
-        // The port is compatible with the C version with following settings:
+        // Only following settings have been ported:
         public const int QLZ_COMPRESSION_LEVEL = 1;
         public const int QLZ_STREAMING_BUFFER = 0;
-
-        // No bounds checking code required because this is managed C#
         public const int QLZ_MEMORY_SAFE = 0;
 
-        // QuickLZ Sharp version 1.4.0 final (negative revision means beta)
         public const int QLZ_VERSION_MAJOR = 1;
         public const int QLZ_VERSION_MINOR = 4;
-        public const int QLZ_VERSION_REVISION = 0;
+        public const int QLZ_VERSION_REVISION = 1;
 
         const int HASH_VALUES = 4096;
         const int MINOFFSET = 2;
@@ -55,7 +54,7 @@ namespace QuickLZSharp
             if (headerLen(source) == 9)
                 return source[1] | (source[2] << 8) | (source[3] << 16) | (source[4] << 24);
             else
-                return source[1];            
+                return source[1];
         }
 
         public static byte[] compress(byte[] source)
@@ -71,11 +70,12 @@ namespace QuickLZSharp
             byte[] d2;
             int fetch = 0;
             int last_matchstart = (source.Length - UNCONDITIONAL_MATCHLEN - UNCOMPRESSED_END - 1);
+            int lits = 0;
 
             if (source.Length == 0)
                 return new byte[0];
 
-            if(src <= last_matchstart)
+            if (src <= last_matchstart)
                 fetch = source[src] | (source[src + 1] << 8) | (source[src + 2] << 16);
 
             while (src <= last_matchstart)
@@ -105,7 +105,7 @@ namespace QuickLZSharp
                 cachetable[hash] = fetch;
                 hashtable[hash] = src;
 
-                if (cache == 0 && src - o > MINOFFSET && hash_counter[hash] != 0)
+                if (cache == 0 && hash_counter[hash] != 0 && (src - o > MINOFFSET || (src == o + 1 && lits >= 3 && src > 3 && source[src] == source[src - 3] && source[src] == source[src - 2] && source[src] == source[src - 1] && source[src] == source[src + 1] && source[src] == source[src + 2])))
                 {
                     cword_val = ((cword_val >> 1) | 0x80000000);
                     if (source[o + 3] != source[src + 3])
@@ -150,9 +150,11 @@ namespace QuickLZSharp
                         }
                     }
                     fetch = source[src] | (source[src + 1] << 8) | (source[src + 2] << 16);
+                    lits = 0;
                 }
                 else
                 {
+                    lits++;
                     hash_counter[hash] = 1;
                     destination[dst] = source[src];
                     cword_val = (cword_val >> 1);
@@ -215,8 +217,7 @@ namespace QuickLZSharp
 
         public static byte[] decompress(byte[] source)
         {
-            int size = sizeDecompressed(source); // source[5] | (source[6] << 8) | (source[7] << 16) | (source[8] << 24);
-            
+            int size = sizeDecompressed(source);
             int src = headerLen(source);
             int dst = 0;
             uint cword_val = 1;
@@ -321,14 +322,12 @@ namespace QuickLZSharp
                             src++;
                             cword_val = cword_val >> 1;
                         }
-
-                        byte[] d2 = new byte[size];
-                        System.Array.Copy(destination, d2, size);
-                        return d2;
+                        return destination;
                     }
                 }
             }
         }
     }
 }
+
 
