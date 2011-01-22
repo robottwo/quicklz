@@ -1,4 +1,4 @@
-// Sample demo for QuickLZ 1.4.x
+// Sample demo for QuickLZ 1.5.x
 
 // Remember to define QLZ_COMPRESSION_LEVEL to the same value for the compressor and decompressor
 
@@ -14,8 +14,9 @@
 int main(int argc, char* argv[])
 {
     FILE *ifile, *ofile;
-    char *file_data, *compressed, *scratch;
+    char *file_data, *compressed;
     size_t d, c;
+	qlz_state_compress *state_compress = (qlz_state_compress *)malloc(sizeof(qlz_state_compress));
 
     ifile = fopen(argv[1], "rb");
     ofile = fopen(argv[2], "wb");
@@ -26,15 +27,14 @@ int main(int argc, char* argv[])
     // "uncompressed size" = 10000 in worst case in this sample demo
     compressed = (char*) malloc(10000 + 400); 
 
-    // allocate and initially zero out the scratch buffer. After this, make sure it is
+    // allocate and initially zero out the states. After this, make sure it is
     // preserved across calls and never modified manually
-    scratch = (char*) malloc(QLZ_SCRATCH_COMPRESS);
-	memset(scratch, 0, QLZ_SCRATCH_COMPRESS); 
-
+	memset(state_compress, 0, sizeof(qlz_state_compress)); 
+ 
     // compress the file in random sized packets
     while((d = fread(file_data, 1, rand() % 10000 + 1, ifile)) != 0)
     {
-        c = qlz_compress(file_data, compressed, d, scratch);
+        c = qlz_compress(file_data, compressed, d, state_compress);
         printf("%u bytes compressed into %u\n", (unsigned int)d, (unsigned int)c);
 
         // the buffer "compressed" now contains c bytes which we could have sent directly to a 

@@ -1,4 +1,4 @@
-// Sample demo for QuickLZ 1.4.x
+// Sample demo for QuickLZ 1.5.x
 
 // Remember to define QLZ_COMPRESSION_LEVEL and QLZ_STREAMING_MODE to the same values for the compressor and decompressor
 
@@ -11,6 +11,7 @@ int main(int argc, char* argv[])
 {
    FILE *ifile, *ofile;
    char *src, *dst, *scratch;
+   qlz_state_decompress *state_decompress = (qlz_state_decompress *)malloc(sizeof(qlz_state_decompress));
    unsigned int len;
 
    ifile = fopen(argv[1], "rb");
@@ -27,11 +28,8 @@ int main(int argc, char* argv[])
    len = qlz_size_decompressed(src);
    dst = (char*) malloc(len);
 
-    // QLZ_SCRATCH_DECOMPRESS is defined in the beginning of the quicklz.h file
-    scratch = (char*) malloc(QLZ_SCRATCH_DECOMPRESS);
-
    // decompress and write result
-   len = qlz_decompress(src, dst, scratch);
+   len = qlz_decompress(src, dst, state_decompress);
    fwrite(dst, len, 1, ofile);
    fclose(ifile);
    fclose(ofile);

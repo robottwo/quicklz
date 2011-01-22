@@ -1,4 +1,4 @@
-// Sample demo for QuickLZ 1.4.x
+// Sample demo for QuickLZ 1.5.x
 
 // Remember to define QLZ_COMPRESSION_LEVEL to the same value for the compressor and decompressor
 
@@ -14,8 +14,9 @@
 int main(int argc, char* argv[])
 {
     FILE *ifile, *ofile;
-    char *file_data, *decompressed, *scratch;
+    char *file_data, *decompressed;
     size_t d, c;
+    qlz_state_decompress *state_decompress = (qlz_state_decompress *)malloc(sizeof(qlz_state_decompress));
 
     // read source file
     ifile = fopen(argv[1], "rb");
@@ -30,8 +31,8 @@ int main(int argc, char* argv[])
 
     // allocate and initially zero out the scratch buffer. After this, make sure it is
     // preserved across calls and never modified manually
-    scratch = (char*) malloc(QLZ_SCRATCH_DECOMPRESS);
-    memset(scratch, 0, QLZ_SCRATCH_DECOMPRESS); 
+	memset(state_decompress, 0, sizeof(qlz_state_decompress)); 
+
 
     // read 9-byte header to find the size of the entire compressed packet, and 
     // then read remaining packet
@@ -39,7 +40,7 @@ int main(int argc, char* argv[])
     {
         c = qlz_size_compressed(file_data);
         fread(file_data + 9, 1, c - 9, ifile);
-        d = qlz_decompress(file_data, decompressed, scratch);
+        d = qlz_decompress(file_data, decompressed, state_decompress);
         printf("%u bytes decompressed into %u.\n", (unsigned int)c, (unsigned int)d);
         fwrite(decompressed, d, 1, ofile);
     }
