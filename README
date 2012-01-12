@@ -10,7 +10,7 @@
 
   Do this:
 	export PREFIX=/usr/local
-	,/configure -DCMAKE_INSTALL_PREFIX:PATH=$PREFIX 
+	./configure -DCMAKE_INSTALL_PREFIX:PATH=$PREFIX 
 	make install
 	(cd python && env python ./setup.py install --prefix=$PREFIX)
 
