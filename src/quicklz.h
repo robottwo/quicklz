@@ -22,19 +22,20 @@
 
 	// 1 gives fastest compression speed. 3 gives fastest decompression speed and best
 	// compression ratio. 
-	#define QLZ_COMPRESSION_LEVEL 1
+	//#define QLZ_COMPRESSION_LEVEL 1
 	//#define QLZ_COMPRESSION_LEVEL 2
-	//#define QLZ_COMPRESSION_LEVEL 3
+	#define QLZ_COMPRESSION_LEVEL 3
 
 	// If > 0, zero out both states prior to first call to qlz_compress() or qlz_decompress() 
 	// and decompress packets in the same order as they were compressed
-	#define QLZ_STREAMING_BUFFER 0
+	//#define QLZ_STREAMING_BUFFER 0
 	//#define QLZ_STREAMING_BUFFER 100000
 	//#define QLZ_STREAMING_BUFFER 1000000
+	#define QLZ_STREAMING_BUFFER 1048576
 
 	// Guarantees that decompression of corrupted data cannot crash. Decreases decompression
 	// speed 10-20%. Compression speed not affected.
-	//#define QLZ_MEMORY_SAFE
+	#define QLZ_MEMORY_SAFE
 #endif
 
 #define QLZ_VERSION_MAJOR 1
@@ -130,6 +131,11 @@ typedef struct
 	} qlz_state_decompress;
 #endif
 
+
+// Support for compilers other than gcc.
+#ifndef __inline
+#define __inline inline
+#endif
 
 #if defined (__cplusplus)
 extern "C" {
