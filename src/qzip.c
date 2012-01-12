@@ -118,8 +118,9 @@ int stream_decompress(FILE *ifile, FILE *ofile)
     return 0;
 }
 
-void usage() {
-    printf(doc);
+void usage(int error) {
+  fprintf(error ? stderr : stdout, doc);
+  exit(status);
 }
 
 void abort_if_exists(char *fn) {
@@ -149,6 +150,7 @@ int main(int argc, char* argv[])
 {
     bool do_compress = false;
     bool to_stdout = false;
+    bool saw_dashes = false;
     char fn_buffer[1024] = {'\0'};
     char tmp_fn_buffer[1024] = {'\0'};
     FILE* ifile;
@@ -173,8 +175,7 @@ int main(int argc, char* argv[])
     }
     else {
         fprintf(stderr, "Unknown executable invocation: '%s'\n", progname);
-        usage();
-        exit(1);
+        usage(1);
     }
 
     if (argc == 2) {
@@ -183,8 +184,7 @@ int main(int argc, char* argv[])
             (strcmp(argv[1], "--help") == 0) ||
             (strcmp(argv[1], "-help") == 0))
         {
-            usage();
-            exit(0);
+            usage(0);
         }
         else if (strcmp(argv[1], "-") == 0) {
             to_stdout = true;
@@ -200,7 +200,9 @@ int main(int argc, char* argv[])
             break;
         }
 
-        if (strcmp(argv[file_index], "--") == 0) {
+        if (argc > 1 && strcmp(argv[file_index], "--") == 0 && !saw_dashes) {
+            // After seeing a '--', treat all further arguments as filenames.
+            saw_dashes = true;
             continue;
         }
         

@@ -14,6 +14,9 @@
 	make install
 	(cd python && env python ./setup.py install --prefix=$PREFIX)
 
+  To compile with debugging symbols, use this option to ./configure:
+        ./configure -DCMAKE_BUILD_TYPE=debug
+
 
 == 1. PREREQUISITES ==
 
