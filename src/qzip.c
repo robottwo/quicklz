@@ -25,6 +25,7 @@
 
 static char doc[] =
        "qzip/qunzip - A gzip-like program which uses quicklz compression.\n"
+       "version 0.2\n"
        "\n"
        "Examples:\n"
        "  cat <file> | qzip > outfile.qz \n"
@@ -120,7 +121,7 @@ int stream_decompress(FILE *ifile, FILE *ofile)
 
 void usage(int error) {
   fprintf(error ? stderr : stdout, doc);
-  exit(status);
+  exit(error);
 }
 
 void abort_if_exists(char *fn) {
@@ -149,14 +150,17 @@ void move_to_final(char *tmp, char *dst) {
 int main(int argc, char* argv[])
 {
     bool do_compress = false;
-    bool to_stdout = false;
-    bool saw_dashes = false;
+    bool to_stdout   = false;
+    bool use_literal = false;
     char fn_buffer[1024] = {'\0'};
     char tmp_fn_buffer[1024] = {'\0'};
     FILE* ifile;
     FILE* ofile;
     char *progname_iter;
     int file_index;
+
+    int c;
+    char *cvalue = NULL;
 
     progname = strtok(argv[0], "/");
     while ((progname_iter = strtok(NULL, "/")) != NULL) {
@@ -178,37 +182,44 @@ int main(int argc, char* argv[])
         usage(1);
     }
 
-    if (argc == 2) {
-        if ((strcmp(argv[1], "-h") == 0) ||
-            (strcmp(argv[1], "-?") == 0) ||
-            (strcmp(argv[1], "--help") == 0) ||
-            (strcmp(argv[1], "-help") == 0))
-        {
-            usage(0);
-        }
-        else if (strcmp(argv[1], "-") == 0) {
-            to_stdout = true;
-        }
+    while ((c = getopt (argc, argv, "dh?")) != -1) {
+      switch (c) {
+      case 'd':
+        do_compress = false;
+        break;
+      case '-':
+        use_literal = true;
+      case 'h':
+      case 'v':
+        usage(0);
+        break;
+      case '?':
+      default:
+        usage(1);
+      }
     }
 
-    for (file_index = 1; file_index <= argc; file_index++)
+    if (optind > 0 &&  strcmp(argv[optind-1], "--") == 0) {
+      use_literal = true;
+    }
+
+
+    if (optind < argc && strcmp(argv[optind], "-") == 0 && !use_literal) {
+      to_stdout = true;
+    }
+
+    for (file_index = optind; file_index <= argc; file_index++)
     {
-        if (argc > 1 && file_index == argc) {
+        if (argc > optind && file_index == argc) {
             // We ensure that we go through the loop at least once.
             // If there are files listed as argv, then ignore the
             // last iteration.
             break;
         }
 
-        if (argc > 1 && strcmp(argv[file_index], "--") == 0 && !saw_dashes) {
-            // After seeing a '--', treat all further arguments as filenames.
-            saw_dashes = true;
-            continue;
-        }
-        
         if (do_compress) {
             // Compress
-            if (argc > 1) {
+            if (argc > 1 && !to_stdout) {
                 sprintf(fn_buffer, "%s.qz", argv[file_index]);
                 sprintf(tmp_fn_buffer, "%s.qz.%d", argv[file_index], getpid());
 
@@ -217,7 +228,10 @@ int main(int argc, char* argv[])
 
                 ifile = fopen(argv[file_index], "rb");
                 if (!ifile) {
-                    perror("Unable to open input file");
+                    fprintf(stderr,
+                            "Unable to open input file '%s':",
+                            argv[file_index]);
+                    perror(NULL);
                     exit(2);
                 }
                 ofile = fopen(tmp_fn_buffer, "wb");
@@ -230,7 +244,7 @@ int main(int argc, char* argv[])
         }
         else {
             // Decompress
-            if (argc > 1) {
+            if (argc > 1 && !to_stdout) {
                 bool err = false;
                 if (strlen(argv[file_index]) < 4) err = true;
                 if (!err) {
@@ -253,7 +267,10 @@ int main(int argc, char* argv[])
 
                 ifile = fopen(argv[file_index], "rb");
                 if (!ifile) {
-                    perror("Unable to open input file");
+                    fprintf(stderr,
+                            "Unable to open compressed file '%s':",
+                            argv[file_index]);
+                    perror(NULL);
                     exit(2);
                 }
 
