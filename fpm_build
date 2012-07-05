@@ -27,7 +27,9 @@ if [ ! -d pkg ]; then
   mkdir pkg
 fi
 
-rm -f pkg/$NAME-$VERSION*.$TARGET
+rm -f pkg/$NAME-$VERSION*.$TARGET pkg/$NAME\_$VERSION*.$TARGET
+
+cd pkg
 
 echo "#!/bin/bash
 ldconfig" > $BUILD/afterinstall
@@ -38,10 +40,9 @@ ldconfig" > $BUILD/afterremove
 mkdir -p $BUILD/etc/ld.so.conf.d
 echo "/usr/local/lib" > $BUILD/etc/ld.so.conf.d/libquicklz.conf
 
-fpm -s dir -t $TARGET -n $NAME -v $VERSION --iteration $ITERATION -C $BUILD \
-  -p pkg/$NAME-VERSION-ITERATION_ARCH.$TARGET --after-install $BUILD/afterinstall \
-  --after-remove $BUILD/afterremove --license GPLv2 \
-  --maintainer "<matthew@37signals.com>" --vendor "QuickLZ" \
+fpm -s dir -t $TARGET -C $BUILD --name $NAME --version $VERSION --iteration $ITERATION \
+  --after-install $BUILD/afterinstall --after-remove $BUILD/afterremove \
+  --license GPLv2 --maintainer "<matthew@37signals.com>" --vendor "QuickLZ" \
   --url "https://github.com/mdkent/quicklz" \
   --description "A very fast implementation of LZO compressors" \
   etc usr
