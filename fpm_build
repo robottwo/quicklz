@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# Quick build with fpm - https://github.com/jordansissel/fpm/
+
+NAME=qzip
+VERSION=1.5.0
+ITERATION=1.custom
+BUILD=/tmp/$NAME
+TARGET=deb
+
+which fpm > /dev/null
+if [ $? -ne 0 ]; then
+  echo "Can't find fpm, is it installed?"
+  exit 1
+fi
+
+if [ -d $BUILD ]; then
+  rm -rf $BUILD
+fi
+
+export PREFIX=$BUILD/usr/local
+
+./configure -DCMAKE_INSTALL_PREFIX:PATH=$PREFIX 
+make install
+
+if [ ! -d pkg ]; then
+  mkdir pkg
+fi
+
+rm -f pkg/$NAME-$VERSION*.$TARGET
+
+echo "#!/bin/bash
+ldconfig" > $BUILD/afterinstall
+
+echo "#!/bin/bash
+ldconfig" > $BUILD/afterremove
+
+fpm -s dir -t $TARGET -n $NAME -v $VERSION --iteration $ITERATION -C $BUILD \
+  -p pkg/$NAME-VERSION-ITERATION_ARCH.$TARGET --after-install $BUILD/afterinstall \
+  --after-remove $BUILD/afterremove --license GPLv2 \
+  --maintainer "<matthew@37signals.com>" --vendor "QuickLZ" \
+  --url "https://github.com/mdkent/quicklz" \
+  --description "A very fast implementation of LZO compressors" \
+  usr
