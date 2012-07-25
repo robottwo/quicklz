@@ -10,6 +10,8 @@ QuickLZ is hosted at U{http://www.quicklz.com}
 
 from __future__ import absolute_import
 
+import io
+
 class QuickLZFile(io.BufferedIOBase):
     """
     The QuickLZFile class simulates most of the methods of a file object
